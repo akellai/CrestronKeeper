@@ -30,7 +30,6 @@ class TcpServerService : Service() {
     private val runnable = Runnable {
         var socket: Socket
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this);
-            // getSharedPreferences("crestronkeeper",Context.MODE_PRIVATE)
         val local_web = sharedPreference.getBoolean("switch_preference_local_web",true)
 
         try {
