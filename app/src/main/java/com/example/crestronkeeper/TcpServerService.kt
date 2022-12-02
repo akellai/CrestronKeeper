@@ -9,10 +9,11 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.preference.PreferenceManager
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
-import java.lang.Integer.parseInt
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
@@ -28,14 +29,21 @@ class TcpServerService : Service() {
 
     private val runnable = Runnable {
         var socket: Socket
+        val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this);
+            // getSharedPreferences("crestronkeeper",Context.MODE_PRIVATE)
+        val local_web = sharedPreference.getBoolean("switch_preference_local_web",true)
+
         try {
             runCrestron()
-            serverSocket = ServerSocket(PORT)
+
+            if( local_web )
+                serverSocket = ServerSocket(Constants.PORT,1, InetAddress.getByName("127.0.0.1"))
+            else
+                serverSocket = ServerSocket(Constants.PORT)
+
             if (serverSocket != null)
             {
-                var breset = false
                 while (working.get()) {
-                    breset = false
                     socket = serverSocket!!.accept()
                     Log.i(TAG, "New client: $socket")
                     val dataInputStream = DataInputStream(socket.getInputStream())
@@ -70,7 +78,17 @@ class TcpServerService : Service() {
                         dataOutputStream.close()
 
                         if (qstring != null) {
-                            if( qstring.startsWith("/reset" ) )
+                            if (qstring == "/local-listener-true")
+                            {
+                                serverSocket!!.close()
+                                serverSocket = ServerSocket(Constants.PORT,1, InetAddress.getByName("127.0.0.1"))
+                            }
+                            else if (qstring == "/local-listener-false")
+                            {
+                                serverSocket!!.close()
+                                serverSocket = ServerSocket(Constants.PORT)
+                            }
+                            else if( qstring.startsWith("/reset" ) )
                                 resetCrestron()
                             else if( qstring.startsWith("/ping" ) )
                             {
@@ -191,6 +209,5 @@ class TcpServerService : Service() {
 
     companion object {
         private val TAG = TcpServerService::class.java.simpleName
-        private const val PORT = 9877
     }
 }
