@@ -15,7 +15,6 @@ import androidx.preference.PreferenceManager
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -25,18 +24,17 @@ import kotlin.concurrent.thread
 
 
 class TcpServerService : Service() {
-    private var serverSocket: ServerSocket? = null
     private val working = AtomicBoolean(true)
     private val pinging = AtomicBoolean(false)
     private val pingSeconds = AtomicInteger(0 )
 
     private val runnable = Runnable {
         var socket = Socket()
-        val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this);
+        val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
         var blocal = sharedPreference.getBoolean("switch_preference_local_web", true)
         var serverSocket = openServerSocket(blocal)
 
-        runCrestron()
+        runCrestron(false)
         while (working.get()) {
             if (serverSocket.isClosed)
                 serverSocket = openServerSocket(blocal)
@@ -62,9 +60,9 @@ class TcpServerService : Service() {
                     Thread.sleep(50L)
                     val rb = dataInputStream.available()
                     if (rb <= 0) break
-                    val buf: ByteArray = ByteArray(rb)
+                    val buf = ByteArray(rb)
                     dataInputStream.read(buf, 0, rb)
-                    val sget: String = String(buf)
+                    val sget = String(buf)
                     if (qstring == null) {
                         qstring = Regex("(?<=GET ).*?(?= HTTP/1.1)").find(sget)?.value
                     }
@@ -94,10 +92,10 @@ class TcpServerService : Service() {
                     } else if (qstring.startsWith("/reset"))
                         resetCrestron()
                     else if (qstring.startsWith("/ping")) {
-                        var result = qstring.filter { it.isDigit() }
+                        val result = qstring.filter { it.isDigit() }
                         runCrestronDelayed(result.toInt())
                     } else
-                        runCrestron();
+                        runCrestron(false)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -132,7 +130,7 @@ class TcpServerService : Service() {
                     Thread.sleep(1000)
                     Log.i(TAG, "PING: $pingSeconds")
                 }
-                runCrestron()
+                runCrestron(true)
                 pinging.set(false)
             }
         }
@@ -144,13 +142,11 @@ class TcpServerService : Service() {
             try {
                 val dialogIntent = Intent(this, MainActivity::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 startActivity(dialogIntent)
                 Thread.sleep(3000)
-                val am = getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
-                am.killBackgroundProcesses("air.com.crestron.andros")
-                runCrestron()
+                runCrestron(true)
             } catch( ex: Exception ) {
                 ex.printStackTrace()
                 val toneGen1 = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
@@ -159,15 +155,24 @@ class TcpServerService : Service() {
         }
     }
 
-    private fun runCrestron()
+    private fun runCrestron(bkill: Boolean)
     {
         val intent = Intent(Intent.ACTION_MAIN)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+
+        if( bkill ) {
+            try {
+                val am = getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+                am.killBackgroundProcesses(Constants.crestronPackageName)
+            }
+            catch (_: Exception) {}
+        }
+
         try {
             intent.component =
-                ComponentName("air.com.crestron.andros", "air.com.crestron.andros.AppEntry")
+                ComponentName(Constants.crestronPackageName, Constants.crestronComponentPackage)
                 startActivity(intent)
         } catch( ex: Exception ) {
             ex.printStackTrace()
