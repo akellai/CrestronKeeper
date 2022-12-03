@@ -1,11 +1,13 @@
 package com.example.crestronkeeper
 
 import android.content.*
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
-
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,6 +33,14 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }, intentFilter)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivity(intent)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(Intent(applicationContext, TcpServerService::class.java))
