@@ -23,28 +23,23 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 
-class TcpServerService : Service() {
+class HttpServerService : Service() {
     private val working = AtomicBoolean(true)
     private val pinging = AtomicBoolean(false)
     private val pingSeconds = AtomicInteger(0 )
 
     private val runnable = Runnable {
-        var socket = Socket()
+        var socket: Socket? = null
+        var serverSocket: ServerSocket? = null
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
         var blocal = sharedPreference.getBoolean("switch_preference_local_web", true)
-        var serverSocket = openServerSocket(blocal)
 
         runCrestron(false)
         while (working.get()) {
-            if (serverSocket.isClosed)
+            if (serverSocket==null)
                 serverSocket = openServerSocket(blocal)
 
-            if (!serverSocket.isBound) {
-                try {
-                    serverSocket.close()
-                } catch (ex: Exception) {
-                    // just in case
-                }
+            if (serverSocket==null) {
                 Thread.sleep(10000L)
                 continue
             }
@@ -85,9 +80,11 @@ class TcpServerService : Service() {
                 if (qstring != null) {
                     if (qstring == "/local-listener-true") {
                         serverSocket.close()
+                        serverSocket = null
                         blocal = true
                     } else if (qstring == "/local-listener-false") {
                         serverSocket.close()
+                        serverSocket = null
                         blocal = false
                     } else if (qstring.startsWith("/reset"))
                         resetCrestron()
@@ -100,7 +97,7 @@ class TcpServerService : Service() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 try {
-                    socket.close()
+                    socket?.close()
                 } catch (ex: IOException) {
                     ex.printStackTrace()
                 }
@@ -108,7 +105,7 @@ class TcpServerService : Service() {
         }
     }
 
-    private fun openServerSocket( blocal: Boolean ): ServerSocket {
+    private fun openServerSocket( blocal: Boolean ): ServerSocket? {
         try {
             if (blocal)
                 return ServerSocket(Constants.PORT, 1, InetAddress.getByName("127.0.0.1"))
@@ -117,7 +114,7 @@ class TcpServerService : Service() {
         catch (e: Exception) {
             e.printStackTrace()
         }
-        return ServerSocket()
+        return null
     }
 
     private fun runCrestronDelayed(seconds: Int)
@@ -157,11 +154,6 @@ class TcpServerService : Service() {
 
     private fun runCrestron(bkill: Boolean)
     {
-        val intent = Intent(Intent.ACTION_MAIN)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
         if( bkill ) {
             try {
                 val am = getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
@@ -171,6 +163,10 @@ class TcpServerService : Service() {
         }
 
         try {
+            val intent = Intent(Intent.ACTION_MAIN)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             intent.component =
                 ComponentName(Constants.crestronPackageName, Constants.crestronComponentPackage)
                 startActivity(intent)
@@ -194,14 +190,14 @@ class TcpServerService : Service() {
 
     private fun startMeForeground() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val NOTIFICATION_CHANNEL_ID = packageName
-            val channelName = "Tcp Server Background Service"
-            val chan = NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_NONE)
+            val channelId = packageName
+            val channelName = "CrestronKeeper Background Service"
+            val chan = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_NONE)
             chan.lightColor = Color.BLUE
             chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             val manager = (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             manager.createNotificationChannel(chan)
-            val notificationBuilder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            val notificationBuilder = NotificationCompat.Builder(this, channelId)
             val notification = notificationBuilder.setOngoing(true)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle("Tcp Server is running in background")
@@ -215,6 +211,6 @@ class TcpServerService : Service() {
     }
 
     companion object {
-        private val TAG = TcpServerService::class.java.simpleName
+        private val TAG = HttpServerService::class.java.simpleName
     }
 }

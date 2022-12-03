@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 
@@ -43,9 +42,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(Intent(applicationContext, TcpServerService::class.java))
+            startForegroundService(Intent(applicationContext, HttpServerService::class.java))
         } else {
-            startService(Intent(applicationContext, TcpServerService::class.java))
+            startService(Intent(applicationContext, HttpServerService::class.java))
         }
 
         val btnClick = findViewById<Button>(R.id.button)
