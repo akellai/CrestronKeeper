@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -13,6 +15,7 @@ import androidx.preference.PreferenceManager
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -28,101 +31,95 @@ class TcpServerService : Service() {
     private val pingSeconds = AtomicInteger(0 )
 
     private val runnable = Runnable {
-        var socket: Socket
+        var socket = Socket()
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this);
-        val local_web = sharedPreference.getBoolean("switch_preference_local_web",true)
+        var blocal = sharedPreference.getBoolean("switch_preference_local_web", true)
+        var serverSocket = openServerSocket(blocal)
 
-        try {
-            runCrestron()
+        runCrestron()
+        while (working.get()) {
+            if (serverSocket.isClosed)
+                serverSocket = openServerSocket(blocal)
 
-            if( local_web )
-                serverSocket = ServerSocket(Constants.PORT,1, InetAddress.getByName("127.0.0.1"))
-            else
-                serverSocket = ServerSocket(Constants.PORT)
+            if (!serverSocket.isBound) {
+                try {
+                    serverSocket.close()
+                } catch (ex: Exception) {
+                    // just in case
+                }
+                Thread.sleep(10000L)
+                continue
+            }
 
-            if (serverSocket != null)
-            {
-                while (working.get()) {
-                    socket = serverSocket!!.accept()
-                    Log.i(TAG, "New client: $socket")
-                    val dataInputStream = DataInputStream(socket.getInputStream())
-                    val dataOutputStream = DataOutputStream(socket.getOutputStream())
+            try {
+                socket = serverSocket.accept()
+                Log.i(TAG, "New client: $socket")
+                val dataInputStream = DataInputStream(socket.getInputStream())
+                val dataOutputStream = DataOutputStream(socket.getOutputStream())
 
-                    try {
-                        var qstring:String? = null
-                        while(true) {
-                            Thread.sleep(50L)
-                            val rb = dataInputStream.available()
-                            if( rb <=0 ) break
-                            val buf:ByteArray = ByteArray(rb)
-                            dataInputStream.read(buf,0,rb)
-                            val sget:String = String(buf)
-                            if( qstring==null ) {
-                                qstring = Regex("(?<=GET ).*?(?= HTTP/1.1)").find(sget)?.value
-                            }
-                        }
-                        Log.i(TAG, "qstring: $qstring")
-                        if( qstring!= null ) {
-                            dataOutputStream.writeBytes(
-                                "HTTP/1.1 404 Not Found\n" +
-                                        "Content-Type: text/plain\n" +
-                                        "Content-Length: 15\n" +
-                                        "Connection: close\n" +
-                                        "\n" +
-                                        "404: Not Found\n"
-                            )
-                        }
-                        socket.close()
-                        dataInputStream.close()
-                        dataOutputStream.close()
-
-                        if (qstring != null) {
-                            if (qstring == "/local-listener-true")
-                            {
-                                serverSocket!!.close()
-                                serverSocket = ServerSocket(Constants.PORT,1, InetAddress.getByName("127.0.0.1"))
-                            }
-                            else if (qstring == "/local-listener-false")
-                            {
-                                serverSocket!!.close()
-                                serverSocket = ServerSocket(Constants.PORT)
-                            }
-                            else if( qstring.startsWith("/reset" ) )
-                                resetCrestron()
-                            else if( qstring.startsWith("/ping" ) )
-                            {
-                                var result = qstring.filter { it.isDigit() }
-                                runCrestronDelayed(result.toInt())
-                            }
-                            else
-                                runCrestron();
-                        }
-
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        try {
-                            dataInputStream.close()
-                        } catch (ex: IOException) {
-                            ex.printStackTrace()
-                        }
-                        try {
-                            dataOutputStream.close()
-                        } catch (ex: IOException) {
-                            ex.printStackTrace()
-                        }
-                        try {
-                            socket?.close()
-                        } catch (ex: IOException) {
-                            ex.printStackTrace()
-                        }
+                var qstring: String? = null
+                while (true) {
+                    Thread.sleep(50L)
+                    val rb = dataInputStream.available()
+                    if (rb <= 0) break
+                    val buf: ByteArray = ByteArray(rb)
+                    dataInputStream.read(buf, 0, rb)
+                    val sget: String = String(buf)
+                    if (qstring == null) {
+                        qstring = Regex("(?<=GET ).*?(?= HTTP/1.1)").find(sget)?.value
                     }
                 }
-            } else {
-                Log.e(TAG, "Couldn't create ServerSocket!")
+                Log.i(TAG, "qstring: $qstring")
+                if (qstring != null) {
+                    dataOutputStream.writeBytes(
+                        "HTTP/1.1 404 Not Found\n" +
+                                "Content-Type: text/plain\n" +
+                                "Content-Length: 15\n" +
+                                "Connection: close\n" +
+                                "\n" +
+                                "404: Not Found\n"
+                    )
+                }
+                dataInputStream.close()
+                dataOutputStream.close()
+                socket.close()
+
+                if (qstring != null) {
+                    if (qstring == "/local-listener-true") {
+                        serverSocket.close()
+                        blocal = true
+                    } else if (qstring == "/local-listener-false") {
+                        serverSocket.close()
+                        blocal = false
+                    } else if (qstring.startsWith("/reset"))
+                        resetCrestron()
+                    else if (qstring.startsWith("/ping")) {
+                        var result = qstring.filter { it.isDigit() }
+                        runCrestronDelayed(result.toInt())
+                    } else
+                        runCrestron();
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                try {
+                    socket.close()
+                } catch (ex: IOException) {
+                    ex.printStackTrace()
+                }
             }
-        } catch (e: IOException) {
+        }
+    }
+
+    private fun openServerSocket( blocal: Boolean ): ServerSocket {
+        try {
+            if (blocal)
+                return ServerSocket(Constants.PORT, 1, InetAddress.getByName("127.0.0.1"))
+            return ServerSocket(Constants.PORT)
+        }
+        catch (e: Exception) {
             e.printStackTrace()
         }
+        return ServerSocket()
     }
 
     private fun runCrestronDelayed(seconds: Int)
@@ -144,15 +141,21 @@ class TcpServerService : Service() {
     private fun resetCrestron()
     {
         thread {
-            val dialogIntent = Intent(this, MainActivity::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                val dialogIntent = Intent(this, MainActivity::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                }
+                startActivity(dialogIntent)
+                Thread.sleep(3000)
+                val am = getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+                am.killBackgroundProcesses("air.com.crestron.andros")
+                runCrestron()
+            } catch( ex: Exception ) {
+                ex.printStackTrace()
+                val toneGen1 = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+                toneGen1.startTone(ToneGenerator.TONE_CDMA_PIP, 150)
             }
-            startActivity(dialogIntent)
-            Thread.sleep(3000)
-            val am = getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
-            am.killBackgroundProcesses("air.com.crestron.andros")
-            runCrestron()
         }
     }
 
@@ -162,10 +165,10 @@ class TcpServerService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
-        intent.component =
-            ComponentName("air.com.crestron.andros", "air.com.crestron.andros.AppEntry")
         try {
-            startActivity(intent)
+            intent.component =
+                ComponentName("air.com.crestron.andros", "air.com.crestron.andros.AppEntry")
+                startActivity(intent)
         } catch( ex: Exception ) {
             ex.printStackTrace()
         }
