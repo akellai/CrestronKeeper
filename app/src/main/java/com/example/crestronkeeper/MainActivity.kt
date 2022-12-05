@@ -16,17 +16,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
-
-        val intentFilter = IntentFilter(Intent.ACTION_SCREEN_ON)
-        intentFilter.addAction(Intent.ACTION_USER_PRESENT)
-        registerReceiver(object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent) {
-                if ((intent.action == Intent.ACTION_USER_PRESENT) || (intent.action == Intent.ACTION_SCREEN_ON)) {
-                    runCrestron()
-                }
-            }
-        }, intentFilter)
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(Intent(applicationContext, HttpServerService::class.java))
         } else {
@@ -49,21 +38,6 @@ class MainActivity : AppCompatActivity() {
                 )
                 startActivity(intent)
             }
-        }
-    }
-
-    private fun runCrestron()
-    {
-        try {
-            val intent = Intent(Intent.ACTION_MAIN)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            intent.component =
-                ComponentName(Constants.crestronPackageName, Constants.crestronComponentPackage)
-            startActivity(intent)
-        } catch( ex: Exception ) {
-            ex.printStackTrace()
         }
     }
 

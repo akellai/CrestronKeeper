@@ -4,6 +4,7 @@ import android.app.*
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -183,6 +184,9 @@ class HttpServerService : Service() {
     override fun onCreate() {
         startMeForeground()
         Thread(runnable).start()
+        val intentFilter = IntentFilter(Intent.ACTION_SCREEN_ON)
+        intentFilter.addAction(Intent.ACTION_USER_PRESENT)
+        registerReceiver(StartupOnBootUpReceiver(), intentFilter)
     }
 
     override fun onDestroy() {
@@ -201,7 +205,7 @@ class HttpServerService : Service() {
             val notificationBuilder = NotificationCompat.Builder(this, channelId)
             val notification = notificationBuilder.setOngoing(true)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("Tcp Server is running in background")
+                .setContentTitle("CrestronKeeper is running")
                 .setPriority(NotificationManager.IMPORTANCE_MIN)
                 .setCategory(Notification.CATEGORY_SERVICE)
                 .build()
