@@ -32,12 +32,13 @@ class HttpServerService : Service() {
         var socket: Socket? = null
         var serverSocket: ServerSocket? = null
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
-        var blocal = sharedPreference.getBoolean("switch_preference_local_web", true)
+        var boolHttpLocal = sharedPreference.getBoolean("switch_preference_local_web", true)
 
         runCrestron(false)
+
         while (working.get()) {
             if (serverSocket==null)
-                serverSocket = openServerSocket(blocal)
+                serverSocket = openServerSocket(boolHttpLocal)
 
             if (serverSocket==null) {
                 Thread.sleep(10000L)
@@ -50,20 +51,20 @@ class HttpServerService : Service() {
                 val dataInputStream = DataInputStream(socket.getInputStream())
                 val dataOutputStream = DataOutputStream(socket.getOutputStream())
 
-                var qstring: String? = null
+                var queryString: String? = null
                 while (true) {
                     Thread.sleep(50L)
                     val rb = dataInputStream.available()
                     if (rb <= 0) break
                     val buf = ByteArray(rb)
                     dataInputStream.read(buf, 0, rb)
-                    val sget = String(buf)
-                    if (qstring == null) {
-                        qstring = Regex("(?<=GET ).*?(?= HTTP/1.1)").find(sget)?.value
+                    val stringBuf = String(buf)
+                    if (queryString == null) {
+                        queryString = Regex("(?<=GET ).*?(?= HTTP/1.1)").find(stringBuf)?.value
                     }
                 }
-                Log.i(TAG, "qstring: $qstring")
-                if (qstring != null) {
+                Log.i(TAG, "queryString: $queryString")
+                if (queryString != null) {
                     dataOutputStream.writeBytes(
                         "HTTP/1.1 404 Not Found\n" +
                                 "Content-Type: text/plain\n" +
@@ -77,19 +78,19 @@ class HttpServerService : Service() {
                 dataOutputStream.close()
                 socket.close()
 
-                if (qstring != null) {
-                    if (qstring == "/local-listener-true") {
+                if (queryString != null) {
+                    if (queryString == "/local-listener-true") {
                         serverSocket.close()
                         serverSocket = null
-                        blocal = true
-                    } else if (qstring == "/local-listener-false") {
+                        boolHttpLocal = true
+                    } else if (queryString == "/local-listener-false") {
                         serverSocket.close()
                         serverSocket = null
-                        blocal = false
-                    } else if (qstring.startsWith("/reset"))
+                        boolHttpLocal = false
+                    } else if (queryString.startsWith("/reset"))
                         resetCrestron()
-                    else if (qstring.startsWith("/ping")) {
-                        val result = qstring.filter { it.isDigit() }
+                    else if (queryString.startsWith("/ping")) {
+                        val result = queryString.filter { it.isDigit() }
                         runCrestronDelayed(result.toInt())
                     } else
                         runCrestron(false)
@@ -105,9 +106,9 @@ class HttpServerService : Service() {
         }
     }
 
-    private fun openServerSocket( blocal: Boolean ): ServerSocket? {
+    private fun openServerSocket(boolHttpLocal: Boolean ): ServerSocket? {
         try {
-            if (blocal)
+            if (boolHttpLocal)
                 return ServerSocket(Constants.PORT, 1, InetAddress.getByName("127.0.0.1"))
             return ServerSocket(Constants.PORT)
         }
@@ -146,15 +147,15 @@ class HttpServerService : Service() {
                 runCrestron(true)
             } catch( ex: Exception ) {
                 ex.printStackTrace()
-                val toneGen1 = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+                val toneGen1 = ToneGenerator(AudioManager.STREAM_MUSIC, 30)
                 toneGen1.startTone(ToneGenerator.TONE_CDMA_PIP, 150)
             }
         }
     }
 
-    private fun runCrestron(bkill: Boolean)
+    private fun runCrestron(boolKill: Boolean)
     {
-        if( bkill ) {
+        if( boolKill ) {
             try {
                 val am = getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
                 am.killBackgroundProcesses(Constants.crestronPackageName)
@@ -169,7 +170,7 @@ class HttpServerService : Service() {
             }
             intent.component =
                 ComponentName(Constants.crestronPackageName, Constants.crestronComponentPackage)
-                startActivity(intent)
+            startActivity(intent)
         } catch( ex: Exception ) {
             ex.printStackTrace()
         }

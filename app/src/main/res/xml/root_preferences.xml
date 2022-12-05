@@ -10,13 +10,12 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="@string/watchdog_header"/>
-    <EditTextPreference
-        android:defaultValue="0"
-        android:key="edit_text_preference_heartbeat_seconds"
-        app:useSimpleSummaryProvider="true"
-        android:selectAllOnFocus="true"
-        android:singleLine="true"
-        android:title="@string/heartbeat_seconds" />
+    <PreferenceCategory app:title="@string/permissions_header">
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="switch_preference_permissions"
+            android:title="@string/android_permissions" />
+    </PreferenceCategory>
 
 </PreferenceScreen>

@@ -4,14 +4,14 @@
     <string name="title_activity_settings">SettingsActivity</string>
 
     <!-- Preference Titles -->
-    <string name="webserver_header">Web Server</string>
-    <string name="watchdog_header">Crestron App Watchdog</string>
+    <string name="webserver_header">HTTP security</string>
+    <string name="permissions_header">Application Permissions</string>
 
     <!-- Web Server Preferences -->
-    <string name="webserver_accessible">HTTP only listens on local interface</string>
+    <string name="webserver_accessible">Only listen on local interface</string>
 
     <!-- Watchdog Preferences -->
     <string name="settings">Settings</string>
-    <string name="heartbeat_seconds">Heartbeat interval in seconds</string>
+    <string name="android_permissions">Always check</string>
 
 </resources>
