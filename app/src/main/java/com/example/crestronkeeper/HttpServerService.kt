@@ -87,7 +87,7 @@ class HttpServerService : Service() {
                     param = tokens[2]
 
                 when (cmd) {
-                    "local0listener" -> {
+                    "local-listener" -> {
                         boolHttpLocal = ("true" == param)
                         serverSocket.close()
                         serverSocket = null
