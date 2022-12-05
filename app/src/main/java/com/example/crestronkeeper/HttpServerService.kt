@@ -78,23 +78,27 @@ class HttpServerService : Service() {
                 dataInputStream.close()
                 dataOutputStream.close()
                 socket.close()
+                val tokens = queryString?.split("/")
+                var cmd = ""
+                if ( tokens!!.size>1 )
+                    cmd = tokens[1]
+                var param = ""
+                if ( tokens.size>2 )
+                    param = tokens[2]
 
-                if (queryString != null) {
-                    if (queryString == "/local-listener-true") {
+                when (cmd) {
+                    "local0listener" -> {
+                        boolHttpLocal = ("true" == param)
                         serverSocket.close()
                         serverSocket = null
-                        boolHttpLocal = true
-                    } else if (queryString == "/local-listener-false") {
-                        serverSocket.close()
-                        serverSocket = null
-                        boolHttpLocal = false
-                    } else if (queryString.startsWith("/reset"))
-                        resetCrestron()
-                    else if (queryString.startsWith("/ping")) {
-                        val result = queryString.filter { it.isDigit() }
-                        runCrestronDelayed(result.toInt())
-                    } else
-                        runCrestron(false)
+                    }
+                    "reset" -> resetCrestron()
+                    "ping" -> {
+                            val result = param.filter { it.isDigit() }
+                            runCrestronDelayed(result.toInt())
+                        }
+                    "" -> {}
+                    else -> runCrestron(false)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -162,6 +166,8 @@ class HttpServerService : Service() {
                 am.killBackgroundProcesses(Constants.crestronPackageName)
             }
             catch (_: Exception) {}
+
+            Thread.sleep(200)
         }
 
         try {

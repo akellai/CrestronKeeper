@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
                 Preference.OnPreferenceChangeListener { _, newValue -> //do your action here
                     val thread = Thread {
                         try {
-                            URL("http://127.0.0.1:${Constants.PORT}/local-listener-$newValue").readBytes()
+                            URL("http://127.0.0.1:${Constants.PORT}/local-listener/$newValue").readBytes()
                         } catch (ex: Exception) {
                             // expected 404 FileNotFoundException
                             ex.printStackTrace()
