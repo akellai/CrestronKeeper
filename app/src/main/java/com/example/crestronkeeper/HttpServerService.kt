@@ -199,6 +199,11 @@ class HttpServerService : Service() {
         working.set(false)
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+        return START_STICKY
+    }
+
     private fun startMeForeground() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = packageName
