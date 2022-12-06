@@ -68,11 +68,12 @@ class HttpServerService : Service() {
                 if (queryString != null) {
                     dataOutputStream.writeBytes(
                         "HTTP/1.1 404 Not Found\n" +
-                                "Content-Type: text/plain\n" +
-                                "Content-Length: 15\n" +
-                                "Connection: close\n" +
-                                "\n" +
-                                "404: Not Found\n"
+                        "Content-Type: text/plain\n" +
+                        "Content-Length: 15\n" +
+                        "Connection: close\n" +
+                        "\n" +
+
+                        "404: Not Found\n"
                     )
                 }
                 dataInputStream.close()
