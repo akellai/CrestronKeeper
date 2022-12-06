@@ -66,41 +66,47 @@ class HttpServerService : Service() {
                 }
                 Log.i(TAG, "queryString: $queryString")
                 if (queryString != null) {
-                    dataOutputStream.writeBytes(
-                        "HTTP/1.1 404 Not Found\n" +
-                        "Content-Type: text/plain\n" +
-                        "Content-Length: 15\n" +
-                        "Connection: close\n" +
-                        "\n" +
+                    try {
+                        dataOutputStream.writeBytes(
+                            "HTTP/1.1 404 Not Found\n" +
+                                    "Content-Type: text/plain\n" +
+                                    "Content-Length: 15\n" +
+                                    "Connection: close\n" +
+                                    "\n" +
 
-                        "404: Not Found\n"
-                    )
+                                    "404: Not Found\n"
+                        )
+                    }
+                    catch(_:Exception) {
+                        //just ignore errors
+                    }
+
+                    val tokens = queryString.split("/")
+                    var cmd = ""
+                    if ( tokens.size>1 )
+                        cmd = tokens[1]
+                    var param = ""
+                    if ( tokens.size>2 )
+                        param = tokens[2]
+
+                    when (cmd) {
+                        "local-listener" -> {
+                            boolHttpLocal = ("true" == param)
+                            serverSocket.close()
+                            serverSocket = null
+                        }
+                        "reset" -> resetCrestron()
+                        "ping" -> {
+                            val result = param.filter { it.isDigit() }
+                            runCrestronDelayed(result.toInt())
+                        }
+                        "" -> {}
+                        else -> runCrestron(false)
+                    }
                 }
                 dataInputStream.close()
                 dataOutputStream.close()
                 socket.close()
-                val tokens = queryString?.split("/")
-                var cmd = ""
-                if ( tokens!!.size>1 )
-                    cmd = tokens[1]
-                var param = ""
-                if ( tokens.size>2 )
-                    param = tokens[2]
-
-                when (cmd) {
-                    "local-listener" -> {
-                        boolHttpLocal = ("true" == param)
-                        serverSocket.close()
-                        serverSocket = null
-                    }
-                    "reset" -> resetCrestron()
-                    "ping" -> {
-                            val result = param.filter { it.isDigit() }
-                            runCrestronDelayed(result.toInt())
-                        }
-                    "" -> {}
-                    else -> runCrestron(false)
-                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 try {
