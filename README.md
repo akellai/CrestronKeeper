@@ -11,7 +11,8 @@ The following functions are supported:
      -	http://127.0.0.1:9877/ping/xxx/whatever.png waits for xxx seconds and then switches device to the Crestron App
      -	http://127.0.0.1:9877/reset/whatever.png effectively restarts Crestron App (makes it background/kills background/starts)
      -	Other none empty request starts Crestron App and  makes it foreground
-     
+- experimental: the application can now execute other registered applications through Uri by handling requests like crestron-keeper://URI_TO_RUN. This will execite the URI_TO_RUN with timeout of 120 sec
+
 This is how I set up wall mounted panel/Crestron App to run 24x7:
 - Run Crestron full screen
 - Check "Auto Reconnect" and "Keep Screen Awake"
@@ -19,7 +20,7 @@ This is how I set up wall mounted panel/Crestron App to run 24x7:
 - In my experience Crestron App hangs after 0x80000000 milliseconds (a little more than 24 days) if runs without restart. Therefore
      - (probably the best solution if supported by panel) Restart panel at least once a week by using internal schedule (not possible on some models)
      - (untested) Using text console, execute the “projectrefresh on” command on the Crestron App panel and hope the Crestron App will reload itself once a week at around midnight
-     - (the above options do not work) make sure controller resets the application nightly (by sending http://127.0.0.1:9877/reset/dummy.png )
+     - (if the above options do not work) make sure controller resets the application nightly (by sending http://127.0.0.1:9877/reset/dummy.png )
 
 Using the application:
 Install apk. This will automatically start Crestron App. Switch to the CrestronKeeper window and turn on the ‘Display over other apps’ permission.
