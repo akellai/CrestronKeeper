@@ -15,6 +15,7 @@ class LauncherActivity : AppCompatActivity() {
         Log.i("TAG","data: $cmd")
         val intent1 = Intent(Intent.ACTION_VIEW, Uri.parse(cmd))
         intent1.putExtra(Browser.EXTRA_APPLICATION_ID, baseContext.packageName)
+        intent1.putExtra(Browser.EXTRA_CREATE_NEW_TAB, false)
         startActivity(intent1)
 
         val thread = Thread {
